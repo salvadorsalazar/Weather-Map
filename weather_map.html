@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather Map</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css' rel='stylesheet' />
+
+
+  <style>
+    #map{
+      width:800px;
+      height : 600px;
+    }
+h1{
+    text-align: center;
+}
+
+
+     #content {
+         display: flex;
+         height: 20rem;
+         justify-content: space-around;
+         align-items: center;
+     }
+
+
+    /*.weather-card{*/
+    /*    display: flex;*/
+    /*    font-family: sans-serif;*/
+    /*    !*width: 16%;*!*/
+    /*    !*height: 10%;*!*/
+    /*    border: 1px solid lightgrey;*/
+    /*    border-radius: 1rem;*/
+    /*}*/
+
+  </style>
+
+
+
+    <link href='css/weather_map_style.css' rel="stylesheet">
+
+
+</head>
+<body>
+
+
+
+    <!-- all scripts for jquery,api keys,mapbox,geocode utilitiees  -->
+        <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+        <script src ='js/keys.js'></script>
+        <!--brings in mapbox library (Lin)k-->
+        <script src='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js'></script>
+        <!--added mapbox geocode from js file-->
+        <script src ='js/mapbox-geocode-utils.js'></script>
+    <!-- all scripts for jquery,api keys,mapbox,geocode utilitiees  -->
+
+
+
+
+<h1>Weather Map Project</h1>
+
+    <div id="container">
+
+            <div id="inputPlace">
+                <label for="locationInput">Enter Location</label>
+                <input id="locationInput">
+                <button id="search" type="submit">Search</button>
+            </div>
+
+        <div id="location" ></div>
+        <div  class="dailyCards" ></div>
+            <!--        id="content"-->
+        <div id="map" ></div>
+
+
+
+
+
+
+</body>
+</html>
+<script>
+
+    mapboxgl.accessToken = MAPBOX_API_TOKEN;
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v9',
+        center: [-98.4916, 29.4252],
+        zoom: 10
+
+    });
+
+
+    var dropMarker = new mapboxgl.Marker({
+        draggable: true
+    })  .setLngLat([-98.4916, 29.4252])
+        .addTo(map);
+
+    var markerPopup = new mapboxgl.Popup()
+        .setHTML("<h5>Click and drag marker</h5>");
+
+    dropMarker.setPopup(markerPopup);
+
+
+
+
+    function onDragEnd() {
+        var lngLat = dropMarker.getLngLat();
+        markerPopup.setHTML(`Longitude: ${lngLat.lng}<br />Latitude: ${lngLat.lat}`);
+        getWeather(lngLat.lat, lngLat.lng)
+    }
+
+    $('#search').on('click', search );
+        $('#locationInput').on('keyup', function(e) {
+            // if(e.keyCode === 13) {
+                search();
+            // }
+        });
+
+    function search() {
+        geocode($('#locationInput').val(), MAPBOX_API_TOKEN).then(function(result) {
+
+            map.setCenter(result);
+            map.setZoom(10);
+             getWeather(result[1], result[0]);
+        });
+    }
+
+    dropMarker.on('dragend', onDragEnd);
+    //
+    function getWeather(latitude, longitude) {
+
+
+        $.get('https://api.openweathermap.org/data/2.5/onecall', {
+            appid: WEATHER_API_TOKEN,
+            lat: latitude,
+            lon: longitude,
+            units: 'imperial'
+        }).done(function (data) {
+            console.log(data);
+                $('.markerLocation').remove();
+                dropMarker.setLngLat([longitude, latitude]);
+                reverseGeocode({lng: longitude, lat: latitude}, MAPBOX_API_TOKEN).then(function(results) {
+                    $('#location').append('<h4 class="markerLocation">' + 'Marker Location: ' + results + '<h4>');
+
+            });
+
+
+            data.daily.forEach(function (day, index) {
+                if (index > 4) {
+                    // return;
+                }
+                $('.dailyCards').html(' ');
+                $('.dailyCards').append('<div class="card" >' +
+                    '<div class="card-body text-white bg-primary ">' +
+                    '<h5>' + new Date(data.daily[index].dt * 1000) + '</h5>' +
+                    '<hr>' +
+                    '<p>' + '<strong>Daytime Temp: </strong>' + data.daily[index].temp.day + '</p>' +
+                    '<p>' + '<strong>Low / High: </strong>' + data.daily[index].temp.min + ' / ' + data.daily[index].temp.max +'</p>' +
+                    '<p>' + '<strong>Description: </strong>' + data.daily[index].weather[0].description + '</p>' +
+                    '<p>' + '<strong>Humidity: </strong>' + data.daily[index].humidity + '</p>' +
+                    '<p>' + '<strong>Pressure: </strong>' + data.daily[index].pressure + '</p>' +
+                    '</div>' +
+                    '</div>')
+
+
+            });
+
+        }).fail(function (error) {
+            console.log(error);
+        });
+    }
+
+     // getWeather();
+
+
+</script>
+
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+<!--// data.daily.forEach(function (day, index) {-->
+<!--//     if (index > 4) {-->
+<!--//         return;-->
+<!--//     } else {-->
+<!--//         var wind = data.daily[index].wind_deg;-->
+<!--//-->
+<!--//         var labelsAndValues = [-->
+<!--//             {text: 'Daytime Temp', value: data.daily[index].temp.day},-->
+<!--//             {text: 'Low', value: data.daily[index].temp.min},-->
+<!--//             {text: 'High', value: data.daily[index].temp.max},-->
+<!--//             {text: 'Description', value: data.daily[index].weather[0].description},-->
+<!--//             {text: 'Humidity', value: data.daily[index].humidity},-->
+<!--//             {text: 'Wind', value: windCardinalDirection(wind)},-->
+<!--//             {text: 'Pressure', value: data.daily[index].pressure}-->
+<!--//         ];-->
+<!--//-->
+<!--//         var dataHtml = labelsAndValues.map(function (item) {-->
+<!--//             return `-->
+<!--//                         <div class="mb-2">-->
+<!--    //                             <div class="day-card-label">${item.text}</div>-->
+<!--    //                             <div class="font-weight-bold">${item.value}</div>-->
+<!--    //                         </div>-->
+<!--//                     `-->
+<!--//         }).join('');-->
+<!--//-->
+<!--//         var regularDate = new Date(data.daily[index].dt * 1000);-->
+<!--//         var formattedDate = (String(regularDate)).substring(0, 15)-->
+<!--//-->
+<!--//         $('#content').append(`-->
+<!--//                     <div class="day-card border rounded p-2">-->
+<!--    //                         <div class="font-weight-bold">${formattedDate}</div>-->
+<!--    //                         <hr>-->
+<!--    //                         ${dataHtml}-->
+<!--    //                     </div>-->
+<!--//                 `)-->
+<!--//     }-->
+<!--// });-->
